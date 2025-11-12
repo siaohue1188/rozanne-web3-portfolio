@@ -37,19 +37,3 @@ This contract was deployed via **Remix IDE** using the **Injected Provider (Meta
 
 ---
 
-🖼️ Deployment Screenshot
-(This image shows the contract successfully deployed via Remix.)
-![IMG_6426](https://github.com/user-attachments/assets/2f77fdc4-4284-4200-a93c-56eb18f112af)
-![IMG_6424](https://github.com/user-attachments/assets/28165785-cefe-45f8-a50c-332528ad6dc5)
-
-🧠 What I Learned
-How Solidity handles state variables and mappings
-The meaning of msg.sender and the constructor role
-How to compile, deploy, and interact with a smart contract
-How to link Remix + MetaMask + GitHub for real project tracking
-
-🪩 Next Steps
-Experiment with token transfers and allowances
-Deploy a real version on Polygon or Base testnet
-Build a simple dApp interface to interact with RZT
-
