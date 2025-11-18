@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Staking dApp</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>My Staking dApp</h1>
+        
+        <div id="connectWallet">
+            <button id="connectWalletButton">Connect Wallet</button>
+        </div>
+
+        <div id="walletInfo" style="display: none;">
+            <p>Connected account: <span id="account"></span></p>
+            <p>RZT Balance: <span id="tokenBalance">0</span></p>
+            <p>Staked RZT: <span id="stakedBalance">0</span></p>
+        </div>
+
+        <div id="mintSection" style="display: none;">
+            <h3>Mint RZT Tokens (Owner Only)</h3>
+            <input type="number" id="mintAmount" placeholder="Amount">
+            <button id="mintButton">Mint</button>
+        </div>
+
+        <div id="stakingSection" style="display: none;">
+            <h3>Staking</h3>
+            <input type="number" id="approveAmount" placeholder="Amount to approve">
+            <button id="approveButton">Approve</button>
+            <br>
+            <input type="number" id="stakeAmount" placeholder="Amount to stake">
+            <button id="stakeButton">Stake</button>
+            <br>
+            <input type="number" id="unstakeAmount" placeholder="Amount to unstake">
+            <button id="unstakeButton">Unstake</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js" type="application/javascript"></script>
+    <script src="app.js"></script>
+</body>
+</html>
