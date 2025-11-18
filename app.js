@@ -32,56 +32,88 @@ let userAddress;
 
 // Connect to MetaMask
 async function connectWallet() {
-    // Check for both desktop and mobile MetaMask
+    console.log('Connect wallet clicked');
+    
+    // Debug: Log what's available
+    console.log('window.ethereum:', window.ethereum);
+    console.log('window.ethereum.isMetaMask:', window.ethereum?.isMetaMask);
+    console.log('window.web3:', window.web3);
+    
     let ethereumProvider;
     
-    // Check for desktop MetaMask
-    if (typeof window.ethereum !== 'undefined') {
+    // Check for MetaMask in different ways
+    if (window.ethereum && window.ethereum.isMetaMask) {
+        console.log('Detected MetaMask via window.ethereum');
         ethereumProvider = window.ethereum;
     } 
-    // Check for mobile MetaMask
-    else if (typeof window.web3 !== 'undefined') {
-        ethereumProvider = window.web3.currentProvider;
-    }
-    // Check for MetaMask Mobile specific provider
-    else if (window.ethereum?.isMetaMask) {
+    else if (window.ethereum) {
+        console.log('Detected window.ethereum (might be MetaMask)');
         ethereumProvider = window.ethereum;
     }
+    else if (window.web3 && window.web3.currentProvider) {
+        console.log('Detected MetaMask via window.web3');
+        ethereumProvider = window.web3.currentProvider;
+    }
     else {
+        console.log('No Ethereum provider found');
         alert('Please install MetaMask or use the MetaMask mobile app browser!');
         return;
     }
 
     try {
+        console.log('Creating ethers provider...');
         provider = new ethers.providers.Web3Provider(ethereumProvider);
         
-        // Request account access
-        await ethereumProvider.request({ method: 'eth_requestAccounts' });
+        console.log('Requesting accounts...');
+        const accounts = await ethereumProvider.request({ 
+            method: 'eth_requestAccounts' 
+        });
+        console.log('Accounts received:', accounts);
         
         signer = provider.getSigner();
         userAddress = await signer.getAddress();
+        console.log('User address:', userAddress);
+        
+        // Get network info
+        const network = await provider.getNetwork();
+        console.log('Connected network:', network.name, network.chainId);
+        
+        // Check if we're on Sepolia (chainId 11155111)
+        if (network.chainId !== 11155111) {
+            updateStatus('⚠️ Please switch to Sepolia network in MetaMask');
+            return;
+        }
         
         // Initialize contracts
+        console.log('Initializing contracts...');
         tokenContract = new ethers.Contract(ROZANNE_TOKEN_ADDRESS, ROZANNE_TOKEN_ABI, signer);
         stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
         
         // Update UI
         document.getElementById('wallet-address').textContent = `Connected: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
+        document.getElementById('network').textContent = `Sepolia (${network.chainId})`;
         document.getElementById('token-info').style.display = 'block';
         document.getElementById('actions').style.display = 'block';
         
         await updateBalances();
-        updateStatus('Wallet connected successfully!');
+        updateStatus('✅ Wallet connected successfully!');
         
     } catch (error) {
         console.error("Wallet connection failed:", error);
-        updateStatus('Failed to connect wallet: ' + error.message);
-        
-        // If on mobile and still failing, show special instructions
-        if (isMobileDevice()) {
-            showMobileInstructions();
-        }
+        updateStatus('❌ Failed to connect: ' + error.message);
     }
+}
+
+function debugProviders() {
+    const debugInfo = `
+        window.ethereum: ${typeof window.ethereum}
+        window.ethereum.isMetaMask: ${window.ethereum?.isMetaMask}
+        window.web3: ${typeof window.web3}
+        window.web3.currentProvider: ${window.web3?.currentProvider ? 'EXISTS' : 'MISSING'}
+        User Agent: ${navigator.userAgent}
+    `;
+    console.log('DEBUG INFO:', debugInfo);
+    alert(debugInfo);
 }
 
 // Check if user is on mobile device
