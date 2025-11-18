@@ -32,75 +32,119 @@ let userAddress;
 
 // Connect to MetaMask
 async function connectWallet() {
-    console.log('Connect wallet clicked');
+    console.log('Connect wallet clicked on Mobile MetaMask');
     
-    // Debug: Log what's available
-    console.log('window.ethereum:', window.ethereum);
-    console.log('window.ethereum.isMetaMask:', window.ethereum?.isMetaMask);
-    console.log('window.web3:', window.web3);
-    
-    let ethereumProvider;
-    
-    // Check for MetaMask in different ways
-    if (window.ethereum && window.ethereum.isMetaMask) {
-        console.log('Detected MetaMask via window.ethereum');
-        ethereumProvider = window.ethereum;
-    } 
-    else if (window.ethereum) {
-        console.log('Detected window.ethereum (might be MetaMask)');
-        ethereumProvider = window.ethereum;
-    }
-    else if (window.web3 && window.web3.currentProvider) {
-        console.log('Detected MetaMask via window.web3');
-        ethereumProvider = window.web3.currentProvider;
-    }
-    else {
-        console.log('No Ethereum provider found');
-        alert('Please install MetaMask or use the MetaMask mobile app browser!');
-        return;
-    }
-
     try {
-        console.log('Creating ethers provider...');
-        provider = new ethers.providers.Web3Provider(ethereumProvider);
+        // For MetaMask Mobile, we need to be more explicit
+        provider = new ethers.providers.Web3Provider(window.ethereum);
         
-        console.log('Requesting accounts...');
-        const accounts = await ethereumProvider.request({ 
+        // Show loading state
+        updateStatus('🔄 Connecting to MetaMask...');
+        
+        // Request accounts - MetaMask Mobile might not show a popup
+        const accounts = await window.ethereum.request({ 
             method: 'eth_requestAccounts' 
         });
-        console.log('Accounts received:', accounts);
         
+        console.log('Mobile accounts received:', accounts);
+        
+        if (!accounts || accounts.length === 0) {
+            updateStatus('❌ No accounts received. Please check MetaMask.');
+            return;
+        }
+        
+        userAddress = accounts[0];
         signer = provider.getSigner();
-        userAddress = await signer.getAddress();
-        console.log('User address:', userAddress);
         
         // Get network info
         const network = await provider.getNetwork();
-        console.log('Connected network:', network.name, network.chainId);
+        console.log('Mobile network:', network);
         
-        // Check if we're on Sepolia (chainId 11155111)
+        // Check if we're on Sepolia
         if (network.chainId !== 11155111) {
             updateStatus('⚠️ Please switch to Sepolia network in MetaMask');
+            // Add network switch instructions
+            showNetworkSwitchInstructions();
             return;
         }
         
         // Initialize contracts
-        console.log('Initializing contracts...');
+        updateStatus('🔄 Loading contracts...');
         tokenContract = new ethers.Contract(ROZANNE_TOKEN_ADDRESS, ROZANNE_TOKEN_ABI, signer);
         stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
         
         // Update UI
+        updateStatus('✅ Connected! Loading balances...');
         document.getElementById('wallet-address').textContent = `Connected: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
-        document.getElementById('network').textContent = `Sepolia (${network.chainId})`;
-        document.getElementById('token-info').style.display = 'block';
-        document.getElementById('actions').style.display = 'block';
+        document.getElementById('network').textContent = `Sepolia`;
+        
+        // Show the main UI
+        document.querySelector('.dashboard').classList.remove('hidden');
+        document.querySelector('.actions').classList.remove('hidden');
         
         await updateBalances();
-        updateStatus('✅ Wallet connected successfully!');
+        updateStatus('✅ Ready! You can now mint and stake tokens.');
         
     } catch (error) {
-        console.error("Wallet connection failed:", error);
-        updateStatus('❌ Failed to connect: ' + error.message);
+        console.error('Mobile connection failed:', error);
+        
+        if (error.code === 4001) {
+            updateStatus('❌ Connection rejected. Please try again and allow connection in MetaMask.');
+        } else {
+            updateStatus('❌ Connection failed: ' + error.message);
+        }
+    }
+}
+
+// Helper function to guide users to switch networks
+function showNetworkSwitchInstructions() {
+    const statusDiv = document.getElementById('status');
+    statusDiv.innerHTML = `
+        <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin: 10px 0;">
+            <h3>🌐 Switch to Sepolia Network</h3>
+            <p>To use this dApp, please switch to Sepolia testnet:</p>
+            <ol style="text-align: left;">
+                <li>Open MetaMask app</li>
+                <li>Tap the network name at the top</li>
+                <li>Select "Sepolia" from the list</li>
+                <li>If Sepolia isn't listed, add it manually</li>
+                <li>Return here and connect again</li>
+            </ol>
+            <button onclick="addSepoliaNetwork()" style="background: #f6851b; color: white; border: none; padding: 10px 15px; border-radius: 5px; margin: 5px;">
+                Add Sepolia Network
+            </button>
+            <button onclick="connectWallet()" style="background: #4CAF50; color: white; border: none; padding: 10px 15px; border-radius: 5px; margin: 5px;">
+                Try Again
+            </button>
+        </div>
+    `;
+}
+function updateStatus(message) {
+    const statusDiv = document.getElementById('status');
+    statusDiv.innerHTML = `<div style="padding: 10px; margin: 10px 0; border-radius: 5px; background: #e3f2fd;">${message}</div>`;
+    console.log('Status:', message);
+}
+
+// Function to automatically add Sepolia network to MetaMask
+async function addSepoliaNetwork() {
+    try {
+        await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+                chainId: '0xaa36a7', // 11155111 in hex
+                chainName: 'Sepolia',
+                rpcUrls: ['https://sepolia.infura.io/v3/'],
+                nativeCurrency: {
+                    name: 'Sepolia ETH',
+                    symbol: 'ETH',
+                    decimals: 18
+                },
+                blockExplorerUrls: ['https://sepolia.etherscan.io']
+            }]
+        });
+        updateStatus('✅ Sepolia network added! Please connect again.');
+    } catch (error) {
+        updateStatus('❌ Failed to add network: ' + error.message);
     }
 }
 
