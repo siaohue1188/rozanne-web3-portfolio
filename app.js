@@ -32,31 +32,88 @@ let userAddress;
 
 // Connect to MetaMask
 async function connectWallet() {
-    if (window.ethereum) {
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        await window.ethereum.request({ method: 'eth_requestAccounts' });
+    // Check for both desktop and mobile MetaMask
+    let ethereumProvider;
+    
+    // Check for desktop MetaMask
+    if (typeof window.ethereum !== 'undefined') {
+        ethereumProvider = window.ethereum;
+    } 
+    // Check for mobile MetaMask
+    else if (typeof window.web3 !== 'undefined') {
+        ethereumProvider = window.web3.currentProvider;
+    }
+    // Check for MetaMask Mobile specific provider
+    else if (window.ethereum?.isMetaMask) {
+        ethereumProvider = window.ethereum;
+    }
+    else {
+        alert('Please install MetaMask or use the MetaMask mobile app browser!');
+        return;
+    }
+
+    try {
+        provider = new ethers.providers.Web3Provider(ethereumProvider);
+        
+        // Request account access
+        await ethereumProvider.request({ method: 'eth_requestAccounts' });
+        
         signer = provider.getSigner();
         userAddress = await signer.getAddress();
         
         // Initialize contracts
         tokenContract = new ethers.Contract(ROZANNE_TOKEN_ADDRESS, ROZANNE_TOKEN_ABI, signer);
         stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, signer);
-
+        
         // Update UI
-        document.getElementById('connectWallet').style.display = 'none';
-        document.getElementById('walletInfo').style.display = 'block';
-        document.getElementById('stakingSection').style.display = 'block';
-        document.getElementById('account').textContent = userAddress;
-
-        // Check if the connected user is the owner (you can set your address here)
-        // For now, we show minting section to everyone for testing, but in production, you should restrict it.
-        document.getElementById('mintSection').style.display = 'block';
-
-        // Load balances
+        document.getElementById('wallet-address').textContent = `Connected: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
+        document.getElementById('token-info').style.display = 'block';
+        document.getElementById('actions').style.display = 'block';
+        
         await updateBalances();
-    } else {
-        alert('Please install MetaMask!');
+        updateStatus('Wallet connected successfully!');
+        
+    } catch (error) {
+        console.error("Wallet connection failed:", error);
+        updateStatus('Failed to connect wallet: ' + error.message);
+        
+        // If on mobile and still failing, show special instructions
+        if (isMobileDevice()) {
+            showMobileInstructions();
+        }
     }
+}
+
+// Check if user is on mobile device
+function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
+// Show mobile-specific instructions
+function showMobileInstructions() {
+    const statusDiv = document.getElementById('status');
+    statusDiv.innerHTML = `
+        <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 10px 0;">
+            <h3>📱 Mobile Setup Required</h3>
+            <p><strong>To use this dApp on mobile:</strong></p>
+            <ol style="text-align: left;">
+                <li>Open the <strong>MetaMask app</strong></li>
+                <li>Tap the <strong>🌐 Browser tab</strong></li>
+                <li>Navigate to: <code>${window.location.href}</code></li>
+                <li>Then try connecting again</li>
+            </ol>
+            <button onclick="openInMetaMaskApp()" style="background: #f6851b; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+                Open in MetaMask App
+            </button>
+        </div>
+    `;
+}
+
+// Open in MetaMask app
+function openInMetaMaskApp() {
+    // Create a deep link to open in MetaMask browser
+    const currentUrl = encodeURIComponent(window.location.href);
+    window.location.href = `https://metamask.app.link/dapp/${currentUrl}`;
 }
 
 // Update token and staked balances
@@ -132,6 +189,21 @@ async function unstakeTokens() {
         alert('Unstake failed!');
     }
 }
+
+// Debug: Check what providers are available
+console.log('Window.ethereum:', typeof window.ethereum);
+console.log('Window.web3:', typeof window.web3);
+console.log('User agent:', navigator.userAgent);
+
+// You can also add this to your HTML temporarily to see the debug info
+document.addEventListener('DOMContentLoaded', function() {
+    const debugInfo = `
+        Ethereum: ${typeof window.ethereum}<br>
+        Web3: ${typeof window.web3}<br>
+        Mobile: ${isMobileDevice()}
+    `;
+    console.log('Debug info:', debugInfo);
+});
 
 // Event listeners
 document.getElementById('connectWalletButton').addEventListener('click', connectWallet);
